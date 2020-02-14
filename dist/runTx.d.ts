@@ -1,5 +1,5 @@
 import BN = require('bn.js');
-import { Transaction } from 'interstatejs-tx';
+import { Transaction } from '@interstatejs/tx';
 import VM from './index';
 import Bloom from './bloom';
 import { EVMResult } from './evm/evm';

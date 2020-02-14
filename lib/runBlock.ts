@@ -4,7 +4,7 @@ import { encode } from 'rlp'
 import VM from './index'
 import Bloom from './bloom'
 import { RunTxResult } from './runTx'
-import { Transaction } from 'interstatejs-tx';
+import { Transaction } from '@interstatejs/tx';
 import PStateManager from './state/promisified'
 const promisify = require('util.promisify')
 const Trie = require('merkle-patricia-tree')

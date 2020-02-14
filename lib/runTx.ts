@@ -1,14 +1,14 @@
 import BN = require('bn.js')
 import { toBuffer } from 'ethereumjs-util'
 import Account from 'ethereumjs-account'
-import { Transaction } from 'interstatejs-tx'
+import { Transaction } from '@interstatejs/tx'
 import VM from './index'
 import Bloom from './bloom'
 import { default as EVM, EVMResult } from './evm/evm'
 import Message from './evm/message'
 import TxContext from './evm/txContext'
 import PStateManager from './state/promisified'
-const Block = require('interstatejs-block')
+const { Block } = require('@interstatejs/block')
 
 /**
  * Options for the `runTx` method.

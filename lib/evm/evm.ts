@@ -19,7 +19,7 @@ import MessageWitness, { Status } from '../witness/message';
 import { default as Interpreter, InterpreterOpts, RunState } from './interpreter'
 import getRoot from '../state/getRoot';
 import witness from '../witness';
-const Block = require('interstatejs-block')
+const { Block } = require('@interstatejs/block')
 
 /**
  * Result of executing a message via the [[EVM]].

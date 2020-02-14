@@ -166,9 +166,9 @@ exports.handlers = {
         if (byteLength < 1 || byteLength > 32) {
             trap(exceptions_1.ERROR.OUT_OF_RANGE);
         }
-        var gasPrice = runState._common.param('gasPrices', 'expByte');
-        var amount = new BN(byteLength).muln(gasPrice);
-        runState.eei.useGas(amount);
+        // const gasPrice = runState._common.param('gasPrices', 'expByte')
+        // const amount = new BN(byteLength).muln(gasPrice)
+        // runState.eei.useGas(amount)
         if (base.isZero()) {
             runState.stack.push(new BN(0));
             return;
@@ -320,7 +320,9 @@ exports.handlers = {
             data = runState.memory.read(offset.toNumber(), length.toNumber());
         }
         // copy fee
-        runState.eei.useGas(new BN(runState._common.param('gasPrices', 'sha3Word')).imul(divCeil(length, new BN(32))));
+        // runState.eei.useGas(
+        //   new BN(runState._common.param('gasPrices', 'sha3Word')).imul(divCeil(length, new BN(32))),
+        // )
         var r = new BN(utils.keccak256(data));
         runState.stack.push(r);
     },
@@ -376,7 +378,9 @@ exports.handlers = {
     CALLDATACOPY: function (runState) {
         var _a = runState.stack.popN(3), memOffset = _a[0], dataOffset = _a[1], dataLength = _a[2];
         subMemUsage(runState, memOffset, dataLength);
-        runState.eei.useGas(new BN(runState._common.param('gasPrices', 'copy')).imul(divCeil(dataLength, new BN(32))));
+        // runState.eei.useGas(
+        //   new BN(runState._common.param('gasPrices', 'copy')).imul(divCeil(dataLength, new BN(32))),
+        // )
         var data = getDataSlice(runState.eei.getCallData(), dataOffset, dataLength);
         var memOffsetNum = memOffset.toNumber();
         var dataLengthNum = dataLength.toNumber();
@@ -388,8 +392,10 @@ exports.handlers = {
     },
     CODECOPY: function (runState) {
         var _a = runState.stack.popN(3), memOffset = _a[0], codeOffset = _a[1], length = _a[2];
-        subMemUsage(runState, memOffset, length);
-        runState.eei.useGas(new BN(runState._common.param('gasPrices', 'copy')).imul(divCeil(length, new BN(32))));
+        // subMemUsage(runState, memOffset, length)
+        // runState.eei.useGas(
+        //   new BN(runState._common.param('gasPrices', 'copy')).imul(divCeil(length, new BN(32))),
+        // )
         var data = getDataSlice(runState.eei.getCode(), codeOffset, length);
         var memOffsetNum = memOffset.toNumber();
         var lengthNum = length.toNumber();
@@ -422,10 +428,6 @@ exports.handlers = {
                 switch (_b.label) {
                     case 0:
                         _a = runState.stack.popN(4), address = _a[0], memOffset = _a[1], codeOffset = _a[2], length = _a[3];
-                        // FIXME: for some reason this must come before subGas
-                        subMemUsage(runState, memOffset, length);
-                        // copy fee
-                        runState.eei.useGas(new BN(runState._common.param('gasPrices', 'copy')).imul(divCeil(length, new BN(32))));
                         if (!(runState.produceWitness && runState.state_access_list)) return [3 /*break*/, 2];
                         addressBuf = addressToBuffer(address);
                         return [4 /*yield*/, runState.eei.isAccountEmpty(addressBuf)];
@@ -489,8 +491,10 @@ exports.handlers = {
         if (returnDataOffset.add(length).gt(runState.eei.getReturnDataSize())) {
             trap(exceptions_1.ERROR.OUT_OF_GAS);
         }
-        subMemUsage(runState, memOffset, length);
-        runState.eei.useGas(new BN(runState._common.param('gasPrices', 'copy')).mul(divCeil(length, new BN(32))));
+        // subMemUsage(runState, memOffset, length)
+        // runState.eei.useGas(
+        //   new BN(runState._common.param('gasPrices', 'copy')).mul(divCeil(length, new BN(32))),
+        // )
         var data = getDataSlice(runState.eei.getReturnData(), returnDataOffset, length);
         var memOffsetNum = memOffset.toNumber();
         var lengthNum = length.toNumber();
@@ -762,9 +766,11 @@ exports.handlers = {
         if (!memLength.isZero()) {
             mem = runState.memory.read(memOffset.toNumber(), memLength.toNumber());
         }
-        runState.eei.useGas(new BN(runState._common.param('gasPrices', 'logTopic'))
-            .imuln(topicsCount)
-            .iadd(memLength.muln(runState._common.param('gasPrices', 'logData'))));
+        // runState.eei.useGas(
+        //   new BN(runState._common.param('gasPrices', 'logTopic'))
+        //     .imuln(topicsCount)
+        //     .iadd(memLength.muln(runState._common.param('gasPrices', 'logData'))),
+        // )
         runState.eei.log(mem, topicsCount, topicsBuf);
     },
     // '0xf0' range - closures
@@ -778,7 +784,6 @@ exports.handlers = {
                             trap(exceptions_1.ERROR.STATIC_STATE_CHANGE);
                         }
                         _a = runState.stack.popN(3), value = _a[0], offset = _a[1], length = _a[2];
-                        subMemUsage(runState, offset, length);
                         gasLimit = new BN(runState.eei.getGasLeft());
                         gasLimit = maxCallGas(gasLimit, runState.eei.getGasLeft());
                         data = Buffer.alloc(0);
@@ -786,37 +791,6 @@ exports.handlers = {
                             data = runState.memory.read(offset.toNumber(), length.toNumber());
                         }
                         return [4 /*yield*/, runState.eei.create(gasLimit, value, data)];
-                    case 1:
-                        ret = _b.sent();
-                        runState.stack.push(ret);
-                        return [2 /*return*/];
-                }
-            });
-        });
-    },
-    CREATE2: function (runState) {
-        return __awaiter(this, void 0, void 0, function () {
-            var _a, value, offset, length, salt, gasLimit, data, ret;
-            return __generator(this, function (_b) {
-                switch (_b.label) {
-                    case 0:
-                        if (!runState._common.gteHardfork('constantinople')) {
-                            trap(exceptions_1.ERROR.INVALID_OPCODE);
-                        }
-                        if (runState.eei.isStatic()) {
-                            trap(exceptions_1.ERROR.STATIC_STATE_CHANGE);
-                        }
-                        _a = runState.stack.popN(4), value = _a[0], offset = _a[1], length = _a[2], salt = _a[3];
-                        subMemUsage(runState, offset, length);
-                        // Deduct gas costs for hashing
-                        runState.eei.useGas(new BN(runState._common.param('gasPrices', 'sha3Word')).imul(divCeil(length, new BN(32))));
-                        gasLimit = new BN(runState.eei.getGasLeft());
-                        gasLimit = maxCallGas(gasLimit, runState.eei.getGasLeft());
-                        data = Buffer.alloc(0);
-                        if (!length.isZero()) {
-                            data = runState.memory.read(offset.toNumber(), length.toNumber());
-                        }
-                        return [4 /*yield*/, runState.eei.create2(gasLimit, value, data, salt.toArrayLike(Buffer, 'be', 32))];
                     case 1:
                         ret = _b.sent();
                         runState.stack.push(ret);
@@ -837,11 +811,11 @@ exports.handlers = {
                         if (runState.eei.isStatic() && !value.isZero()) {
                             trap(exceptions_1.ERROR.STATIC_STATE_CHANGE);
                         }
-                        subMemUsage(runState, inOffset, inLength);
-                        subMemUsage(runState, outOffset, outLength);
-                        if (!value.isZero()) {
-                            runState.eei.useGas(new BN(runState._common.param('gasPrices', 'callValueTransfer')));
-                        }
+                        // subMemUsage(runState, inOffset, inLength)
+                        // subMemUsage(runState, outOffset, outLength)
+                        // if (!value.isZero()) {
+                        //   runState.eei.useGas(new BN(runState._common.param('gasPrices', 'callValueTransfer')))
+                        // }
                         gasLimit = maxCallGas(gasLimit, runState.eei.getGasLeft());
                         data = Buffer.alloc(0);
                         if (!inLength.isZero()) {
@@ -932,8 +906,8 @@ exports.handlers = {
                         _a = runState.stack.popN(6), gasLimit = _a[0], toAddress = _a[1], inOffset = _a[2], inLength = _a[3], outOffset = _a[4], outLength = _a[5];
                         toAddressBuf = addressToBuffer(toAddress);
                         calldataHash = interpreter_witness_1.sha3(runState, inOffset, inLength);
-                        subMemUsage(runState, inOffset, inLength);
-                        subMemUsage(runState, outOffset, outLength);
+                        // subMemUsage(runState, inOffset, inLength)
+                        // subMemUsage(runState, outOffset, outLength)
                         gasLimit = maxCallGas(gasLimit, runState.eei.getGasLeft());
                         data = Buffer.alloc(0);
                         if (!inLength.isZero()) {
@@ -968,8 +942,8 @@ exports.handlers = {
                         _a = runState.stack.popN(6), gasLimit = _a[0], toAddress = _a[1], inOffset = _a[2], inLength = _a[3], outOffset = _a[4], outLength = _a[5];
                         toAddressBuf = addressToBuffer(toAddress);
                         calldataHash = interpreter_witness_1.sha3(runState, inOffset, inLength);
-                        subMemUsage(runState, inOffset, inLength);
-                        subMemUsage(runState, outOffset, outLength);
+                        // subMemUsage(runState, inOffset, inLength)
+                        // subMemUsage(runState, outOffset, outLength)
                         gasLimit = maxCallGas(gasLimit, runState.eei.getGasLeft());
                         data = Buffer.alloc(0);
                         if (!inLength.isZero()) {
@@ -1007,34 +981,6 @@ exports.handlers = {
             returnData = runState.memory.read(offset.toNumber(), length.toNumber());
         }
         runState.eei.revert(returnData);
-    },
-    // '0x70', range - other
-    SELFDESTRUCT: function (runState) {
-        return __awaiter(this, void 0, void 0, function () {
-            var selfdestructToAddress, selfdestructToAddressBuf, balance, empty;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        selfdestructToAddress = runState.stack.pop();
-                        if (runState.eei.isStatic()) {
-                            trap(exceptions_1.ERROR.STATIC_STATE_CHANGE);
-                        }
-                        selfdestructToAddressBuf = addressToBuffer(selfdestructToAddress);
-                        return [4 /*yield*/, runState.eei.getExternalBalance(runState.eei.getAddress())];
-                    case 1:
-                        balance = _a.sent();
-                        if (!balance.gtn(0)) return [3 /*break*/, 3];
-                        return [4 /*yield*/, runState.eei.isAccountEmpty(selfdestructToAddressBuf)];
-                    case 2:
-                        empty = _a.sent();
-                        if (empty) {
-                            runState.eei.useGas(new BN(runState._common.param('gasPrices', 'callNewAccount')));
-                        }
-                        _a.label = 3;
-                    case 3: return [2 /*return*/, runState.eei.selfDestruct(selfdestructToAddressBuf)];
-                }
-            });
-        });
     },
 };
 function describeLocation(runState) {

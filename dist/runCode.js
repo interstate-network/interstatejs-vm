@@ -17,7 +17,7 @@ var ethereumjs_util_1 = require("ethereumjs-util");
 var txContext_1 = require("./evm/txContext");
 var message_1 = require("./evm/message");
 var evm_1 = require("./evm/evm");
-var Block = require('interstatejs-block');
+var Block = require('@interstatejs/block').Block;
 /**
  * @ignore
  */

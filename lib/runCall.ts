@@ -4,7 +4,7 @@ import VM from './index'
 import TxContext from './evm/txContext'
 import Message from './evm/message'
 import { default as EVM, EVMResult } from './evm/evm'
-const Block = require('interstatejs-block')
+const { Block } = require('@interstatejs/block')
 
 /**
  * Options for running a call (or create) operation
