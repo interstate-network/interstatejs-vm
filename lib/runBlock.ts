@@ -5,6 +5,7 @@ import VM from './index'
 import Bloom from './bloom'
 import { RunTxResult } from './runTx'
 import { Transaction } from 'interstatejs-tx';
+import { encodeRollupTransaction } from 'interstatejs-tx/dist/rollup';
 import PStateManager from './state/promisified'
 const promisify = require('util.promisify')
 const Trie = require('merkle-patricia-tree')
@@ -44,6 +45,10 @@ export interface RunBlockResult {
    * Results of executing the transactions in the block
    */
   results: RunTxResult[]
+  /**
+   * Rollup encoding of the transactions in the block
+   */
+  rollups: Buffer[]
 }
 
 /**
@@ -147,7 +152,14 @@ export default async function runBlock(this: VM, opts: RunBlockOpts): Promise<Ru
     results: result.results,
   })
 
-  return { receipts: result.receipts, results: result.results }
+  const rollups: Buffer[] = []
+  for (let i = 0; i < result.results.length; i++) {
+    const tx: Transaction = block.transactions[i]
+    const root = result.results[i].stateRoot
+    rollups.push(encodeRollupTransaction(tx, root.toBuffer()))
+  }
+
+  return { receipts: result.receipts, results: result.results, rollups }
 }
 
 /**
