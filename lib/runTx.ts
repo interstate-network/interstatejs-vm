@@ -8,6 +8,7 @@ import { default as EVM, EVMResult } from './evm/evm'
 import Message from './evm/message'
 import TxContext from './evm/txContext'
 import PStateManager from './state/promisified'
+import getRoot from './state/getRoot';
 const Block = require('interstatejs-block')
 
 /**
@@ -44,6 +45,10 @@ export interface RunTxResult extends EVMResult {
    * The amount of ether used by this transaction
    */
   amountSpent: BN
+  /**
+   * The root hash of the state tree after executing the contract.
+   */
+  stateRoot: BN
   /**
    * The amount of gas as that was refunded during the transaction (i.e. `gasUsed = totalGasConsumed - gasRefund`)
    */
@@ -110,26 +115,28 @@ async function _runTx(this: VM, opts: RunTxOpts): Promise<RunTxResult> {
 
   // Check from account's balance and nonce
   let fromAccount = await state.getAccount(tx.getSenderAddress())
-  if (!opts.skipBalance && new BN(fromAccount.balance).lt(tx.getUpfrontCost())) {
-    throw new Error(
-      `sender doesn't have enough funds to send tx. The upfront cost is: ${tx
-        .getUpfrontCost()
-        .toString()}` +
-        ` and the sender's account only has: ${new BN(fromAccount.balance).toString()}`,
+  if (!opts.tx.isIncoming) {
+    if (!opts.skipBalance && new BN(fromAccount.balance).lt(tx.getUpfrontCost())) {
+      throw new Error(
+        `sender doesn't have enough funds to send tx. The upfront cost is: ${tx
+          .getUpfrontCost()
+          .toString()}` +
+          ` and the sender's account only has: ${new BN(fromAccount.balance).toString()}`,
+      )
+    } else if (!opts.skipNonce && !new BN(fromAccount.nonce).eq(new BN(tx.nonce))) {
+      throw new Error(
+        `the tx doesn't have the correct nonce. account has nonce of: ${new BN(
+          fromAccount.nonce,
+        ).toString()} tx has nonce of: ${new BN(tx.nonce).toString()}`,
+      )
+    }
+    // Update from account's nonce and balance
+    fromAccount.nonce = toBuffer(new BN(fromAccount.nonce).addn(1))
+    fromAccount.balance = toBuffer(
+      new BN(fromAccount.balance).sub(new BN(tx.gasLimit).mul(new BN(tx.gasPrice))),
     )
-  } else if (!opts.skipNonce && !new BN(fromAccount.nonce).eq(new BN(tx.nonce))) {
-    throw new Error(
-      `the tx doesn't have the correct nonce. account has nonce of: ${new BN(
-        fromAccount.nonce,
-      ).toString()} tx has nonce of: ${new BN(tx.nonce).toString()}`,
-    )
+    await state.putAccount(tx.getSenderAddress(), fromAccount)
   }
-  // Update from account's nonce and balance
-  fromAccount.nonce = toBuffer(new BN(fromAccount.nonce).addn(1))
-  fromAccount.balance = toBuffer(
-    new BN(fromAccount.balance).sub(new BN(tx.gasLimit).mul(new BN(tx.gasPrice))),
-  )
-  await state.putAccount(tx.getSenderAddress(), fromAccount)
 
   /*
    * Execute message
@@ -200,7 +207,7 @@ async function _runTx(this: VM, opts: RunTxOpts): Promise<RunTxResult> {
    * @property {Object} result result of the transaction
    */
   await this._emit('afterTx', results)
-
+  results.stateRoot = new BN(await getRoot(results.execResult.runState!.eei._state));
   return results
 }
 
