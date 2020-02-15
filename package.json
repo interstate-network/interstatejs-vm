@@ -44,6 +44,7 @@
   "dependencies": {
     "async": "^2.1.2",
     "async-eventemitter": "^0.2.2",
+    "bn.js": "^5.1.1",
     "clone": "^2.1.2",
     "core-js-pure": "^3.0.1",
     "ethereumjs-abi": "^0.6.8",
