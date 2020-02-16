@@ -11,6 +11,7 @@ export enum ERROR {
   CREATE_COLLISION = 'create collision',
   STOP = 'stop',
   REFUND_EXHAUSTED = 'refund exhausted',
+  INSUFFICIENT_BALANCE = 'insufficient balance for call'
 }
 
 export class VmError {
