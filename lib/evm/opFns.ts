@@ -700,25 +700,25 @@ export const handlers: { [k: string]: OpHandler } = {
   },
 
   // '0xf0' range - closures
-  CREATE: async function(runState: RunState) {
-    if (runState.eei.isStatic()) {
-      trap(ERROR.STATIC_STATE_CHANGE)
-    }
+  // CREATE: async function(runState: RunState) {
+  //   if (runState.eei.isStatic()) {
+  //     trap(ERROR.STATIC_STATE_CHANGE)
+  //   }
 
-    const [value, offset, length] = runState.stack.popN(3)
+  //   const [value, offset, length] = runState.stack.popN(3)
 
-    // subMemUsage(runState, offset, length)
-    let gasLimit = new BN(runState.eei.getGasLeft())
-    gasLimit = maxCallGas(gasLimit, runState.eei.getGasLeft())
+  //   // subMemUsage(runState, offset, length)
+  //   let gasLimit = new BN(runState.eei.getGasLeft())
+  //   gasLimit = maxCallGas(gasLimit, runState.eei.getGasLeft())
 
-    let data = Buffer.alloc(0)
-    if (!length.isZero()) {
-      data = runState.memory.read(offset.toNumber(), length.toNumber())
-    }
+  //   let data = Buffer.alloc(0)
+  //   if (!length.isZero()) {
+  //     data = runState.memory.read(offset.toNumber(), length.toNumber())
+  //   }
 
-    const ret = await runState.eei.create(gasLimit, value, data)
-    runState.stack.push(ret)
-  },
+  //   const ret = await runState.eei.create(gasLimit, value, data)
+  //   runState.stack.push(ret)
+  // },
   CALL: async function(runState: RunState) {
     let [
       gasLimit,
