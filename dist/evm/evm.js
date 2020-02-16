@@ -62,7 +62,7 @@ var eei_1 = require("./eei");
 var message_1 = require("../witness/message");
 var interpreter_1 = require("./interpreter");
 var getRoot_1 = require("../state/getRoot");
-var Block = require('interstatejs-block');
+var Block = require('@interstatejs/block').Block;
 function OOGResult(gasLimit) {
     return {
         returnValue: Buffer.alloc(0),

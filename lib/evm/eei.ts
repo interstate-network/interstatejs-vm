@@ -484,11 +484,13 @@ export default class EEI {
     // empty the return data buffer
     this._lastReturned = Buffer.alloc(0)
 
-    // Check if account has enough ether and max depth not exceeded
+    // Check if account has enough ether
+    // this._env.depth >= this._common.param('vm', 'stackLimit') ||
     if (
-      this._env.depth >= this._common.param('vm', 'stackLimit') ||
-      (msg.delegatecall !== true && new BN(this._env.contract.balance).lt(msg.value))
+      msg.delegatecall !== true &&
+      new BN(this._env.contract.balance).lt(msg.value)
     ) {
+      this._lastReturned = toBuffer(ERROR.INSUFFICIENT_BALANCE);
       return new BN(0)
     }
     const results = await this._evm.executeMessage(msg)
@@ -529,75 +531,76 @@ export default class EEI {
   /**
    * Creates a new contract with a given value.
    */
-  async create(gasLimit: BN, value: BN, data: Buffer, salt: Buffer | null = null): Promise<BN> {
-    const selfdestruct = { ...this._result.selfdestruct }
-    const msg = new Message({
-      caller: this._env.address,
-      gasLimit: gasLimit,
-      value: value,
-      data: data,
-      salt: salt,
-      depth: this._env.depth + 1,
-      selfdestruct: selfdestruct,
-    })
+  // async create(gasLimit: BN, value: BN, data: Buffer, salt: Buffer | null = null): Promise<BN> {
+  //   const selfdestruct = { ...this._result.selfdestruct }
+  //   const msg = new Message({
+  //     caller: this._env.address,
+  //     gasLimit: gasLimit,
+  //     value: value,
+  //     data: data,
+  //     salt: salt,
+  //     depth: this._env.depth + 1,
+  //     selfdestruct: selfdestruct,
+  //   })
 
-    // empty the return data buffer
-    this._lastReturned = Buffer.alloc(0)
+  //   // empty the return data buffer
+  //   this._lastReturned = Buffer.alloc(0)
 
-    // Check if account has enough ether and max depth not exceeded
-    if (
-      this._env.depth >= this._common.param('vm', 'stackLimit') ||
-      (msg.delegatecall !== true && new BN(this._env.contract.balance).lt(msg.value))
-    ) {
-      return new BN(0)
-    }
+  //   // Check if account has enough ether and max depth not exceeded
+  //   if (
+  //     this._env.depth >= this._common.param('vm', 'stackLimit') ||
+  //     (msg.delegatecall !== true && new BN(this._env.contract.balance).lt(msg.value))
+  //   ) {
+  //     this._lastReturned = toBuffer(ERROR.INSUFFICIENT_BALANCE);
+  //     return new BN(0)
+  //   }
 
-    this._env.contract.nonce = toBuffer(new BN(this._env.contract.nonce).addn(1))
-    await this._state.putAccount(this._env.address, this._env.contract)
+  //   this._env.contract.nonce = toBuffer(new BN(this._env.contract.nonce).addn(1))
+  //   await this._state.putAccount(this._env.address, this._env.contract)
 
-    const results = await this._evm.executeMessage(msg)
+  //   const results = await this._evm.executeMessage(msg)
 
-    if (results.execResult.logs) {
-      this._result.logs = this._result.logs.concat(results.execResult.logs)
-    }
+  //   if (results.execResult.logs) {
+  //     this._result.logs = this._result.logs.concat(results.execResult.logs)
+  //   }
 
-    // add gasRefund
-    if (results.execResult.gasRefund) {
-      this._result.gasRefund = this._result.gasRefund.add(results.execResult.gasRefund)
-    }
+  //   // add gasRefund
+  //   if (results.execResult.gasRefund) {
+  //     this._result.gasRefund = this._result.gasRefund.add(results.execResult.gasRefund)
+  //   }
 
-    // this should always be safe
-    this.useGas(results.gasUsed)
+  //   // this should always be safe
+  //   this.useGas(results.gasUsed)
 
-    // Set return buffer in case revert happened
-    if (
-      results.execResult.exceptionError &&
-      results.execResult.exceptionError.error === ERROR.REVERT
-    ) {
-      this._lastReturned = results.execResult.returnValue
-    }
+  //   // Set return buffer in case revert happened
+  //   if (
+  //     results.execResult.exceptionError &&
+  //     results.execResult.exceptionError.error === ERROR.REVERT
+  //   ) {
+  //     this._lastReturned = results.execResult.returnValue
+  //   }
 
-    if (!results.execResult.exceptionError) {
-      Object.assign(this._result.selfdestruct, selfdestruct)
-      // update stateRoot on current contract
-      const account = await this._state.getAccount(this._env.address)
-      this._env.contract = account
-      if (results.createdAddress) {
-        // push the created address to the stack
-        return new BN(results.createdAddress)
-      }
-    }
+  //   if (!results.execResult.exceptionError) {
+  //     Object.assign(this._result.selfdestruct, selfdestruct)
+  //     // update stateRoot on current contract
+  //     const account = await this._state.getAccount(this._env.address)
+  //     this._env.contract = account
+  //     if (results.createdAddress) {
+  //       // push the created address to the stack
+  //       return new BN(results.createdAddress)
+  //     }
+  //   }
 
-    return this._getReturnCode(results)
-  }
+  //   return this._getReturnCode(results)
+  // }
 
   /**
    * Creates a new contract with a given value. Generates
    * a deterministic address via CREATE2 rules.
    */
-  async create2(gasLimit: BN, value: BN, data: Buffer, salt: Buffer): Promise<BN> {
-    return this.create(gasLimit, value, data, salt)
-  }
+  // async create2(gasLimit: BN, value: BN, data: Buffer, salt: Buffer): Promise<BN> {
+  //   return this.create(gasLimit, value, data, salt)
+  // }
 
   /**
    * Returns true if account is empty (according to EIP-161).

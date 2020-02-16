@@ -43,7 +43,7 @@ var bloom_1 = require("./bloom");
 var evm_1 = require("./evm/evm");
 var message_1 = require("./evm/message");
 var txContext_1 = require("./evm/txContext");
-var Block = require('interstatejs-block');
+var Block = require('@interstatejs/block').Block;
 /**
  * @ignore
  */
