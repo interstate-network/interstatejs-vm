@@ -1,6 +1,6 @@
 {
   "name": "@interstatejs/vm",
-  "version": "4.1.0",
+  "version": "4.1.1",
   "description": "An Ethereum VM implementation for Interstate One",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -41,6 +41,9 @@
     "VM"
   ],
   "dependencies": {
+    "@interstatejs/block": "^2.2.0",
+    "@interstatejs/tx": "^2.1.2",
+    "@interstatejs/utils": "^1.0.0",
     "async": "^2.1.2",
     "async-eventemitter": "^0.2.2",
     "bn.js": "^5.1.1",
@@ -53,9 +56,6 @@
     "ethereumjs-util": "^6.1.0",
     "fake-merkle-patricia-tree": "^1.0.1",
     "functional-red-black-tree": "^1.0.1",
-    "@interstatejs/block": "^2.2.0",
-    "@interstatejs/tx": "^2.1.2",
-    "@interstatejs/utils": "^1.0.0",
     "level-ws": "^2.0.0",
     "merkle-patricia-tree": "^2.3.2",
     "rustbn.js": "~0.2.0",
