@@ -195,7 +195,7 @@ export default class EVM {
           new BN(keccak256(Buffer.alloc(0))),
           message.data
         );
-        witness.status = Status.stop
+        witness.status = Status.success
         result.witnesses = [ witness ];
       }
       return {
@@ -238,7 +238,7 @@ export default class EVM {
         const { error } = result.exceptionError;
         switch(error) {
           case ERROR.STOP:
-            witness.status = Status.stop;
+            witness.status = Status.success;
             break;
           case ERROR.REVERT:
             witness.status = Status.revert;

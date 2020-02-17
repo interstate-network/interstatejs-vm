@@ -1,15 +1,12 @@
 import { BN } from "ethereumjs-util";
 import AccessWitness, { AbiEncodeable } from './accessWitness';
-// const ABI = require("ethereumjs-abi");
 const ABI = require('web3-eth-abi')
 import toHex from './toHex';
-import { CallWitness } from "./call";
 
 export enum Status {
   exception = 0,
   success = 1,
-  revert = 2,
-  stop = 3
+  revert = 2
 }
 
 /* const prettyPrintWords = (abiEncodedString: any) =>
