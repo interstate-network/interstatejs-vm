@@ -81,6 +81,7 @@ export class DelegateCallWitness implements AccessWitness {
   abiTypes = [
     'bytes32', // stateRootLeave
     'uint256', // gas
+    'uint256', // gasUsed
     'uint256', // gasRefund
     'address', // address
     'bytes32', // calldataHash
