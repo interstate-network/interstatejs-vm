@@ -67,7 +67,7 @@ const opcodes: OpcodeList = {
   0x41: { name: 'COINBASE', fee: 2, isAsync: true, shouldProduceWitness: true },
   0x42: { name: 'TIMESTAMP', fee: 2, isAsync: true, shouldProduceWitness: true },
   0x43: { name: 'NUMBER', fee: 2, isAsync: true, shouldProduceWitness: true },
-  0x44: { name: 'DIFFICULTY', fee: 2, isAsync: true, shouldProduceWitness: true },
+  // 0x44: { name: 'DIFFICULTY', fee: 2, isAsync: true, shouldProduceWitness: true },
   0x45: { name: 'GASLIMIT', fee: 2, isAsync: true, shouldProduceWitness: true },
 
   // 0x50 range - 'storage' and execution
