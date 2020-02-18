@@ -360,7 +360,7 @@ export const handlers: { [k: string]: OpHandler } = {
   CODECOPY: function(runState: RunState) {
     let [memOffset, codeOffset, length] = runState.stack.popN(3)
 
-    // subMemUsage(runState, memOffset, length)
+    subMemUsage(runState, memOffset, length)
     // runState.eei.useGas(
     //   new BN(runState._common.param('gasPrices', 'copy')).imul(divCeil(length, new BN(32))),
     // )
@@ -383,7 +383,7 @@ export const handlers: { [k: string]: OpHandler } = {
     let [address, memOffset, codeOffset, length] = runState.stack.popN(4)
     
     // FIXME: for some reason this must come before subGas
-    // subMemUsage(runState, memOffset, length)
+    subMemUsage(runState, memOffset, length)
     // // copy fee
     // runState.eei.useGas(
     //   new BN(runState._common.param('gasPrices', 'copy')).imul(divCeil(length, new BN(32))),
@@ -432,7 +432,7 @@ export const handlers: { [k: string]: OpHandler } = {
       trap(ERROR.OUT_OF_GAS)
     }
 
-    // subMemUsage(runState, memOffset, length)
+    subMemUsage(runState, memOffset, length)
     // runState.eei.useGas(
     //   new BN(runState._common.param('gasPrices', 'copy')).mul(divCeil(length, new BN(32))),
     // )
@@ -483,13 +483,6 @@ export const handlers: { [k: string]: OpHandler } = {
       runState.state_access_list.push(new NumberWitness(number))
     }
     runState.stack.push(number)
-  },
-  DIFFICULTY: function(runState: RunState) {
-    let difficulty = runState.eei.getBlockDifficulty()
-    if (runState.produceWitness && runState.state_access_list) {
-      runState.state_access_list.push(new DifficultyWitness(difficulty))
-    }
-    runState.stack.push(difficulty)
   },
   GASLIMIT: function(runState: RunState) {
     let gasLimit = runState.eei.getBlockGasLimit()
@@ -623,9 +616,9 @@ export const handlers: { [k: string]: OpHandler } = {
   },
   GAS: function(runState: RunState) {
     let gas = new BN(runState.eei.getGasLeft())
-    if (runState.produceWitness && runState.state_access_list) {
-      runState.state_access_list.push(new GasWitness(gas))
-    }
+    // if (runState.produceWitness && runState.state_access_list) {
+    //   runState.state_access_list.push(new GasWitness(gas))
+    // }
     runState.stack.push(gas)
   },
   JUMPDEST: function(runState: RunState) {},
@@ -735,30 +728,30 @@ export const handlers: { [k: string]: OpHandler } = {
       trap(ERROR.STATIC_STATE_CHANGE)
     }
 
-    // subMemUsage(runState, inOffset, inLength)
-    // subMemUsage(runState, outOffset, outLength)
+    subMemUsage(runState, inOffset, inLength)
+    subMemUsage(runState, outOffset, outLength)
     // if (!value.isZero()) {
     //   runState.eei.useGas(new BN(runState._common.param('gasPrices', 'callValueTransfer')))
     // }
     gasLimit = maxCallGas(gasLimit, runState.eei.getGasLeft())
-
     let data = Buffer.alloc(0)
     if (!inLength.isZero()) {
       data = runState.memory.read(inOffset.toNumber(), inLength.toNumber())
     }
 
-    const empty = await runState.eei.isAccountEmpty(toAddressBuf)
-    if (empty) {
-      if (!value.isZero()) {
-        runState.eei.useGas(new BN(runState._common.param('gasPrices', 'callNewAccount')))
-      }
-    }
+    // const empty = await runState.eei.isAccountEmpty(toAddressBuf)
+    // if (empty) {
+    //   if (!value.isZero()) {
+    //     runState.eei.useGas(new BN(runState._common.param('gasPrices', 'callNewAccount')))
+    //   }
+    // }
 
-    if (!value.isZero()) {
-      // TODO: Don't use private attr directly
-      runState.eei._gasLeft.iaddn(runState._common.param('gasPrices', 'callStipend'))
-      gasLimit.iaddn(runState._common.param('gasPrices', 'callStipend'))
-    }
+    /* Temporarily removed */
+    // if (!value.isZero()) {
+    //   // TODO: Don't use private attr directly
+    //   runState.eei._gasLeft.iaddn(runState._common.param('gasPrices', 'callStipend'))
+    //   gasLimit.iaddn(runState._common.param('gasPrices', 'callStipend'))
+    // }
 
     const ret = await runState.eei.call(gasLimit, toAddressBuf, value, data)
     if (runState.produceWitness && runState.state_access_list) {
@@ -795,15 +788,17 @@ export const handlers: { [k: string]: OpHandler } = {
 
     subMemUsage(runState, inOffset, inLength)
     subMemUsage(runState, outOffset, outLength)
-    if (!value.isZero()) {
-      runState.eei.useGas(new BN(runState._common.param('gasPrices', 'callValueTransfer')))
-    }
+    /* Temporarily removed */
+    // if (!value.isZero()) {
+    //   runState.eei.useGas(new BN(runState._common.param('gasPrices', 'callValueTransfer')))
+    // }
     gasLimit = maxCallGas(gasLimit, runState.eei.getGasLeft())
-    if (!value.isZero()) {
-      // TODO: Don't use private attr directly
-      runState.eei._gasLeft.iaddn(runState._common.param('gasPrices', 'callStipend'))
-      gasLimit.iaddn(runState._common.param('gasPrices', 'callStipend'))
-    }
+    /* Temporarily removed */
+    // if (!value.isZero()) {
+    //   // TODO: Don't use private attr directly
+    //   runState.eei._gasLeft.iaddn(runState._common.param('gasPrices', 'callStipend'))
+    //   gasLimit.iaddn(runState._common.param('gasPrices', 'callStipend'))
+    // }
 
     let data = Buffer.alloc(0)
     if (!inLength.isZero()) {
@@ -836,8 +831,8 @@ export const handlers: { [k: string]: OpHandler } = {
     const toAddressBuf = addressToBuffer(toAddress)
     let calldataHash = sha3(runState, inOffset, inLength)
 
-    // subMemUsage(runState, inOffset, inLength)
-    // subMemUsage(runState, outOffset, outLength)
+    subMemUsage(runState, inOffset, inLength)
+    subMemUsage(runState, outOffset, outLength)
     gasLimit = maxCallGas(gasLimit, runState.eei.getGasLeft())
 
     let data = Buffer.alloc(0)
@@ -870,8 +865,8 @@ export const handlers: { [k: string]: OpHandler } = {
     const toAddressBuf = addressToBuffer(toAddress)
     let calldataHash = sha3(runState, inOffset, inLength)
 
-    // subMemUsage(runState, inOffset, inLength)
-    // subMemUsage(runState, outOffset, outLength)
+    subMemUsage(runState, inOffset, inLength)
+    subMemUsage(runState, outOffset, outLength)
     gasLimit = maxCallGas(gasLimit, runState.eei.getGasLeft())
 
     let data = Buffer.alloc(0)
@@ -938,10 +933,10 @@ function trap(err: string) {
 function subMemUsage(runState: RunState, offset: BN, length: BN) {
   /* modified to do nothing */
   // YP (225): access with zero length will not extend the memory
-  // if (length.isZero()) return
+  if (length.isZero()) return
 
-  // const newMemoryWordCount = divCeil(offset.add(length), new BN(32))
-  // if (newMemoryWordCount.lte(runState.memoryWordCount)) return
+  const newMemoryWordCount = divCeil(offset.add(length), new BN(32))
+  if (newMemoryWordCount.lte(runState.memoryWordCount)) return
 
   // const words = newMemoryWordCount
   // const fee = new BN(runState._common.param('gasPrices', 'memory'))
@@ -954,7 +949,7 @@ function subMemUsage(runState: RunState, offset: BN, length: BN) {
   //   runState.highestMemCost = cost
   // }
 
-  // runState.memoryWordCount = newMemoryWordCount
+  runState.memoryWordCount = newMemoryWordCount
 }
 
 /**
