@@ -142,13 +142,16 @@ async function _runTx(this: VM, opts: RunTxOpts): Promise<RunTxResult> {
   /*
    * Execute message
    */
-  const txContext = new TxContext(tx.gasPrice, tx.getSenderAddress())
+  /* Incoming transactions use null address as origin */
+  const origin = tx.isIncoming ? Buffer.alloc(20, 0, 'hex') : tx.getSenderAddress()
+  const txContext = new TxContext(tx.gasPrice, origin)
   const message = new Message({
     caller: tx.getSenderAddress(),
     gasLimit: gasLimit,
     to: tx.to.toString('hex') !== '' ? tx.to : undefined,
     value: tx.value,
     data: tx.data,
+    isFirstIncoming: opts.tx.isIncoming
   })
   state._wrapped._clearOriginalStorageCache()
   const evm = new EVM(this, txContext, block)

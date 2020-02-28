@@ -12,6 +12,7 @@ export default class Message {
   _codeAddress: Buffer
   isStatic: boolean
   isCompiled: boolean
+  isFirstIncoming: boolean
   salt: Buffer
   selfdestruct: any
   delegatecall: boolean
@@ -28,6 +29,7 @@ export default class Message {
     this._codeAddress = opts.codeAddress
     this.isStatic = opts.isStatic || false
     this.isCompiled = opts.isCompiled || false // For CALLCODE, TODO: Move from here
+    this.isFirstIncoming = opts.isFirstIncoming || false
     this.salt = opts.salt // For CREATE2, TODO: Move from here
     this.selfdestruct = opts.selfdestruct // TODO: Move from here
     this.delegatecall = opts.delegatecall || false

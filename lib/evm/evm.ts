@@ -159,7 +159,7 @@ export default class EVM {
   async _executeCall(message: Message): Promise<EVMResult> {
     const account = await this._state.getAccount(message.caller)
     // Reduce tx value from sender
-    if (!message.delegatecall) {
+    if (!message.delegatecall && !message.isFirstIncoming) {
       await this._reduceSenderBalance(account, message)
     }
     // Load `to` account
@@ -210,8 +210,6 @@ export default class EVM {
       result = await this.runInterpreter(message)
     }
     if (this._produceWitness) {
-      // await this._state.commit()
-      // console.log(Object.keys(this._state._wrapped._cache._cache.root.value.val))
       const stateRootLeave = new BN(await getRoot(result.runState!.eei._state));
       // await this._state.checkpoint()
       const returnDataHash = new BN(keccak256(
