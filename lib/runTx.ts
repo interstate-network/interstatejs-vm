@@ -192,12 +192,12 @@ async function _runTx(this: VM, opts: RunTxOpts): Promise<RunTxResult> {
   /*
    * Cleanup accounts
    */
-  if (results.execResult.selfdestruct) {
-    const keys = Object.keys(results.execResult.selfdestruct)
-    for (const k of keys) {
-      await state.putAccount(Buffer.from(k, 'hex'), new Account())
-    }
-  }
+  // if (results.execResult.selfdestruct) {
+  //   const keys = Object.keys(results.execResult.selfdestruct)
+  //   for (const k of keys) {
+  //     await state.putAccount(Buffer.from(k, 'hex'), new Account())
+  //   }
+  // }
   // await state.cleanupTouchedAccounts()
 
   /**
