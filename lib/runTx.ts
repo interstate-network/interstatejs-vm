@@ -198,7 +198,7 @@ async function _runTx(this: VM, opts: RunTxOpts): Promise<RunTxResult> {
       await state.putAccount(Buffer.from(k, 'hex'), new Account())
     }
   }
-  await state.cleanupTouchedAccounts()
+  // await state.cleanupTouchedAccounts()
 
   /**
    * The `afterTx` event
