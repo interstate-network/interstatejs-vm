@@ -1,5 +1,5 @@
 import BN = require('bn.js')
-import { toBuffer, bufferToInt } from 'ethereumjs-util'
+import { toBuffer, bufferToInt, setLengthLeft } from 'ethereumjs-util'
 import { encode } from 'rlp'
 import VM from './index'
 import Bloom from './bloom'
@@ -22,14 +22,19 @@ export interface RunBlockOpts {
    */
   root?: Buffer
   /**
-   * Whether to generate the stateRoot. If false `runBlock` will check the
-   * stateRoot of the block against the Trie
+   * Whether to generate the stateRoot and exitsRoot. If false `runBlock` will check the
+   * roots of the block against the Trie.
    */
   generate?: boolean
   /**
    * If true, will skip block validation
    */
   skipBlockValidation?: boolean
+  /**
+   * The address of the exits contract. If set, `runBlock` will either add or verify the exitsRoot
+   * in the block header, depending on the value of `generate`.
+   */
+  exitContractAddress?: Buffer
 }
 
 /**
@@ -104,6 +109,7 @@ export default async function runBlock(this: VM, opts: RunBlockOpts): Promise<Ru
   // Checkpoint state
   await state.checkpoint()
   let result
+
   try {
     result = await applyBlock.bind(this)(block, opts.skipBlockValidation)
   } catch (err) {
@@ -114,28 +120,42 @@ export default async function runBlock(this: VM, opts: RunBlockOpts): Promise<Ru
   // Persist state
   await state.commit()
   const stateRoot = await state.getStateRoot()
+  let exitsRoot: Buffer = Buffer.alloc(32, 0, 'hex');
+  if (opts.exitContractAddress) {
+    if (!(await state.accountIsEmpty(opts.exitContractAddress))) {
+      // let slot = setLengthLeft(toBuffer(block.header.number), 32);
+      const slotKey = new BN(block.header.number);
+      const slotBuf = slotKey.toArrayLike(Buffer, 'be', 32)
+      exitsRoot = await state.getContractStorage(opts.exitContractAddress, slotBuf);
+      if (!exitsRoot || !exitsRoot.length || exitsRoot.equals(Buffer.from([]))) exitsRoot = Buffer.alloc(32, 0, 'hex');
+    }
+  }
 
   // Given the generate option, either set resulting header
   // values to the current block, or validate the resulting
   // header values against the current block.
   if (generateStateRoot) {
     block.header.stateRoot = stateRoot
-    block.header.bloom = result.bloom.bitvector
+    block.header.exitsRoot = exitsRoot
+    // block.header.bloom = result.bloom.bitvector
   } else {
-    if (
-      result.receiptRoot &&
-      result.receiptRoot.toString('hex') !== block.header.receiptTrie.toString('hex')
-    ) {
-      throw new Error('invalid receiptTrie ')
-    }
-    if (result.bloom.bitvector.toString('hex') !== block.header.bloom.toString('hex')) {
-      throw new Error('invalid bloom ')
-    }
+    // if (
+    //   result.receiptRoot &&
+    //   result.receiptRoot.toString('hex') !== block.header.receiptTrie.toString('hex')
+    // ) {
+    //   throw new Error('invalid receiptTrie ')
+    // }
+    // if (result.bloom.bitvector.toString('hex') !== block.header.bloom.toString('hex')) {
+    //   throw new Error('invalid bloom ')
+    // }
     if (bufferToInt(block.header.gasUsed) !== Number(result.gasUsed)) {
       throw new Error('invalid gasUsed ')
     }
     if (stateRoot.toString('hex') !== block.header.stateRoot.toString('hex')) {
       throw new Error('invalid block stateRoot ')
+    }
+    if (exitsRoot.toString('hex') !== block.header.exitsRoot.toString('hex')) {
+      throw new Error('invalid block exitsRoot ')
     }
   }
 
@@ -152,10 +172,12 @@ export default async function runBlock(this: VM, opts: RunBlockOpts): Promise<Ru
   })
 
   const rollups: Buffer[] = []
-  for (let i = 0; i < result.results.length; i++) {
-    const tx: Transaction = block.transactions[i]
-    const root = result.results[i].stateRoot
-    rollups.push(encodeRollupTransaction(tx, root.toBuffer()))
+  if (result.results) {
+    for (let i = 0; i < result.results.length; i++) {
+      const tx: Transaction = block.transactions[i]
+      const root = result.results[i].stateRoot
+      rollups.push(encodeRollupTransaction(tx, root.toBuffer()))
+    }
   }
 
   return { receipts: result.receipts, results: result.results, rollups }
@@ -181,7 +203,7 @@ async function applyBlock(this: VM, block: any, skipBlockValidation = false) {
   // Apply transactions
   const txResults = await applyTransactions.bind(this)(block)
   // Pay ommers and miners
-  await assignBlockRewards.bind(this)(block)
+  // await assignBlockRewards.bind(this)(block)
   return txResults
 }
 
@@ -208,7 +230,7 @@ async function applyTransactions(this: VM, block: any) {
       new BN(tx.gasLimit).add(gasUsed),
     )
     if (gasLimitIsHigherThanBlock) {
-      throw new Error('tx has a higher gas limit than the block')
+      throw new Error(`tx has a higher gas limit than the block - ${new BN(block.header.gasLimit).toString('hex')} - tx had ${new BN(tx.gasLimit).toString('hex')}`)
     }
 
     // Run the tx through the VM
@@ -251,43 +273,43 @@ async function applyTransactions(this: VM, block: any) {
  * Calculates block rewards for miner and ommers and puts
  * the updated balances of their accounts to state.
  */
-async function assignBlockRewards(this: VM, block: any): Promise<void> {
-  const state = this.pStateManager
-  const minerReward = new BN(this._common.param('pow', 'minerReward'))
-  const ommers = block.uncleHeaders
-  // Reward ommers
-  for (const ommer of ommers) {
-    const reward = calculateOmmerReward(
-      new BN(ommer.number),
-      new BN(block.header.number),
-      minerReward,
-    )
-    await rewardAccount(state, ommer.coinbase, reward)
-  }
-  // Reward miner
-  const reward = calculateMinerReward(minerReward, ommers.length)
-  await rewardAccount(state, block.header.coinbase, reward)
-}
+// async function assignBlockRewards(this: VM, block: any): Promise<void> {
+//   const state = this.pStateManager
+//   const minerReward = new BN(this._common.param('pow', 'minerReward'))
+//   const ommers = block.uncleHeaders
+//   // Reward ommers
+//   for (const ommer of ommers) {
+//     const reward = calculateOmmerReward(
+//       new BN(ommer.number),
+//       new BN(block.header.number),
+//       minerReward,
+//     )
+//     await rewardAccount(state, ommer.coinbase, reward)
+//   }
+//   // Reward miner
+//   const reward = calculateMinerReward(minerReward, ommers.length)
+//   await rewardAccount(state, block.header.coinbase, reward)
+// }
 
-function calculateOmmerReward(ommerBlockNumber: BN, blockNumber: BN, minerReward: BN): BN {
-  const heightDiff = blockNumber.sub(ommerBlockNumber)
-  let reward = new BN(8).sub(heightDiff).mul(minerReward.divn(8))
-  if (reward.ltn(0)) {
-    reward = new BN(0)
-  }
-  return reward
-}
+// function calculateOmmerReward(ommerBlockNumber: BN, blockNumber: BN, minerReward: BN): BN {
+//   const heightDiff = blockNumber.sub(ommerBlockNumber)
+//   let reward = new BN(8).sub(heightDiff).mul(minerReward.divn(8))
+//   if (reward.ltn(0)) {
+//     reward = new BN(0)
+//   }
+//   return reward
+// }
 
-function calculateMinerReward(minerReward: BN, ommersNum: number): BN {
-  // calculate nibling reward
-  const niblingReward = minerReward.divn(32)
-  const totalNiblingReward = niblingReward.muln(ommersNum)
-  const reward = minerReward.add(totalNiblingReward)
-  return reward
-}
+// function calculateMinerReward(minerReward: BN, ommersNum: number): BN {
+//   // calculate nibling reward
+//   const niblingReward = minerReward.divn(32)
+//   const totalNiblingReward = niblingReward.muln(ommersNum)
+//   const reward = minerReward.add(totalNiblingReward)
+//   return reward
+// }
 
-async function rewardAccount(state: PStateManager, address: Buffer, reward: BN): Promise<void> {
-  const account = await state.getAccount(address)
-  account.balance = toBuffer(new BN(account.balance).add(reward))
-  await state.putAccount(address, account)
-}
+// async function rewardAccount(state: PStateManager, address: Buffer, reward: BN): Promise<void> {
+//   const account = await state.getAccount(address)
+//   account.balance = toBuffer(new BN(account.balance).add(reward))
+//   await state.putAccount(address, account)
+// }
