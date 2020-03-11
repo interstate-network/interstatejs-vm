@@ -128,7 +128,7 @@ export default class EVM {
     await this._state.checkpoint()
 
     let result
-    if (message.to) {
+    if (message.to && message.to.length) {
       result = await this._executeCall(message)
     } else {
       result = await this._executeCreate(message)
@@ -210,10 +210,10 @@ export default class EVM {
       result = await this.runInterpreter(message)
     }
     if (this._produceWitness) {
-      const stateRootLeave = new BN(await getRoot(result.runState!.eei._state));
+      const stateRootLeave = new BN(await getRoot(result.runState ? result.runState.eei._state : this._state));
       // await this._state.checkpoint()
       const returnDataHash = new BN(keccak256(
-        result.returnValue.length == 0 ? Buffer.alloc(0) : result.returnValue
+        (!result.returnValue || result.returnValue.length == 0) ? Buffer.alloc(0) : result.returnValue
       ))
       const witness = new MessageWitness(
         stateRootEnter,
@@ -256,22 +256,27 @@ export default class EVM {
   }
 
   async _executeCreate(message: Message): Promise<EVMResult> {
-    const account = await this._state.getAccount(message.caller)
-    // Reduce tx value from sender
-    await this._reduceSenderBalance(account, message)
-
-    message.code = message.data
-    message.data = Buffer.alloc(0)
-    message.to = await this._generateAddress(message)
-    let toAccount = await this._state.getAccount(message.to)
-    // Check for collision
-    if (
-      (toAccount.nonce && new BN(toAccount.nonce).gtn(0)) ||
-      toAccount.codeHash.compare(KECCAK256_NULL) !== 0
-    ) {
+    if (!message.isFirstIncoming) {
       return {
         gasUsed: message.gasLimit,
         createdAddress: message.to,
+        execResult: {
+          returnValue: Buffer.alloc(0),
+          exceptionError: new VmError(ERROR.ATTEMPTED_CREATE),
+          gasUsed: message.gasLimit,
+        }
+      }
+    } else {
+      console.log(`VM DEBUG -- GOT MSG WITH IS FIRST INCOMING`)
+    }
+    const account = await this._state.getAccount(message.caller)
+    if (
+      (account.nonce && new BN(account.nonce).gtn(0)) ||
+      account.codeHash.compare(KECCAK256_NULL) !== 0
+    ) {
+      return {
+        gasUsed: message.gasLimit,
+        createdAddress: message.caller,
         execResult: {
           returnValue: Buffer.alloc(0),
           exceptionError: new VmError(ERROR.CREATE_COLLISION),
@@ -279,8 +284,12 @@ export default class EVM {
         },
       }
     }
+    await this._state.clearContractStorage(message.caller)
+    await this._addToBalance(account, message)
 
-    await this._state.clearContractStorage(message.to)
+    message.code = message.data
+    message.data = Buffer.alloc(0)
+    message.to = message.caller;
 
     const newContractEvent: NewContractEvent = {
       address: message.to,
@@ -289,53 +298,16 @@ export default class EVM {
 
     await this._vm._emit('newContract', newContractEvent)
 
-    toAccount = await this._state.getAccount(message.to)
-    toAccount.nonce = new BN(toAccount.nonce).addn(1).toArrayLike(Buffer)
-
-    // Add tx value to the `to` account
-    await this._addToBalance(toAccount, message)
-
-    if (!message.code || message.code.length === 0) {
-      return {
-        gasUsed: new BN(0),
-        createdAddress: message.to,
-        execResult: {
-          gasUsed: new BN(0),
-          returnValue: Buffer.alloc(0),
-        },
-      }
-    }
-
-    let result = await this.runInterpreter(message)
-
-    // fee for size of the return value
-    let totalGas = result.gasUsed
-    if (!result.exceptionError) {
-      const returnFee = new BN(
-        result.returnValue.length * this._vm._common.param('gasPrices', 'createData'),
-      )
-      totalGas = totalGas.add(returnFee)
-    }
-
-    // if not enough gas
-    if (
-      totalGas.lte(message.gasLimit) &&
-      (this._vm.allowUnlimitedContractSize || result.returnValue.length <= 24576)
-    ) {
-      result.gasUsed = totalGas
-    } else {
-      result = { ...result, ...OOGResult(message.gasLimit) }
-    }
-
-    // Save code if a new contract was created
-    if (!result.exceptionError && result.returnValue && result.returnValue.toString() !== '') {
-      await this._state.putContractCode(message.to, result.returnValue)
-    }
+    
+    await this._state.putContractCode(message.to, message.code)
 
     return {
-      gasUsed: result.gasUsed,
+      gasUsed: new BN(0),
       createdAddress: message.to,
-      execResult: result,
+      execResult: {
+        returnValue: new Buffer(1),
+        gasUsed: new BN(0)
+      },
     }
   }
 
@@ -373,7 +345,6 @@ export default class EVM {
       if (interpreterRes.exceptionError.error !== ERROR.REVERT) {
         gasUsed = message.gasLimit
       }
-
       // Clear the result on error
       result = {
         ...result,

@@ -211,7 +211,7 @@ async function _runTx(this: VM, opts: RunTxOpts): Promise<RunTxResult> {
    * @property {Object} result result of the transaction
    */
   await this._emit('afterTx', results)
-  results.stateRoot = new BN(await getRoot(results.execResult.runState!.eei._state));
+  results.stateRoot = new BN(await getRoot(state));
   return results
 }
 

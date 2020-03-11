@@ -8,6 +8,7 @@ export enum ERROR {
   REVERT = 'revert',
   STATIC_STATE_CHANGE = 'static state change',
   INTERNAL_ERROR = 'internal error',
+  ATTEMPTED_CREATE = 'attempted to execute create',
   CREATE_COLLISION = 'create collision',
   STOP = 'stop',
   REFUND_EXHAUSTED = 'refund exhausted',
